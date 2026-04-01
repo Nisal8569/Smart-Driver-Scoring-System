@@ -51,7 +51,7 @@ class MLDriverScorer:
         if speed == 0:
             return self.score, "IDLE"
 
-        # Skip prediction on OBD dropout (moving but no engine data)
+        # OBD dropout — moving but no engine signal, skip
         if speed > 5 and rpm == 0 and engine_load == 0:
             return self.score, "SAFE"
 
@@ -63,8 +63,7 @@ class MLDriverScorer:
                 pred = self.model.predict(features_df.values)[0]
 
                 if pred == 1 or event in ("Harsh Acceleration", "Harsh Braking"):
-                    # Suppress false positives: low speed + moderate throttle input
-                    # is likely a hill or traffic, not aggressive driving
+                    # low-speed + moderate throttle is hill/traffic, not aggression
                     if speed < 30 and relative_throttle < 20 and throttle < 40:
                         prediction_label = "SAFE"
                         self.score = round(min(100, self.score + 0.1), 1)

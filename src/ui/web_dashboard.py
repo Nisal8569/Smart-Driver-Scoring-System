@@ -5,7 +5,6 @@ import plotly.graph_objects as go
 import os
 from datetime import datetime
 
-# ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Driver Scoring Monitor",
     page_icon="🚘",
@@ -13,7 +12,6 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── Global CSS ─────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap');
@@ -140,10 +138,8 @@ div[data-testid="stMetricValue"] { color: #00FFAB; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Config ─────────────────────────────────────────────────────────────────────
 TRIPS_DIR = os.path.join(os.path.dirname(__file__), "../../data/trips")
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
 def load_trip_data(file_path):
     try:
         df = pd.read_csv(file_path)
@@ -274,7 +270,6 @@ with st.sidebar:
     
     trips_data = get_trips_list()
     
-    # Session state for active trip
     if 'active_trip_idx' not in st.session_state:
         st.session_state.active_trip_idx = 0
     
@@ -311,14 +306,12 @@ with st.sidebar:
     st.markdown("---")
     st.markdown('<span style="color:#6e7681;font-size:0.73rem">Smart Driver Scoring System · FYP</span>', unsafe_allow_html=True)
 
-# ── Hero Header ────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="hero-banner">
     <h1 class="hero-title">Driver Scoring Monitor</h1>
 </div>
 """, unsafe_allow_html=True)
 
-# ── Guard ───────────────────────────────────────────────────────────────────────
 if not trips_data or not selected_info:
     st.info("No trip data found in `data/trips/`. Start a recording on the Raspberry Pi.")
     st.stop()
@@ -329,7 +322,6 @@ if df is None or df.empty:
     st.error("Trip file could not be loaded.")
     st.stop()
 
-# ── Derived Values ─────────────────────────────────────────────────────────────
 final_score  = safe_score(df)
 max_speed    = df['speed'].max()
 avg_speed    = df['speed'].mean()
@@ -340,10 +332,8 @@ sc           = score_color(final_score)
 s_cls        = score_class(final_score)
 agg_cls      = "danger" if agg_count > 5 else ("warning" if agg_count > 2 else "")
 
-# Active trip label
 st.markdown(f'<p style="color:#6e7681;font-size:0.88rem;margin:0 0 18px">{selected_info["display"]}</p>', unsafe_allow_html=True)
 
-# ── Latest Trip Summary Cards Row ─────────────────────────────────────────────
 m1, m2, m3, m4, m5 = st.columns(5)
 
 cards = [
@@ -362,7 +352,6 @@ for col, val, cls, lbl in cards:
             <div class="metric-label">{lbl}</div>
         </div>""", unsafe_allow_html=True)
 
-# ── Gauge (left) + Timeline (right) ───────────────────────────────────────────
 g_col, t_col = st.columns([1, 2.4])
 
 with g_col:
@@ -382,7 +371,6 @@ with t_col:
     st.markdown('<p class="section-hdr">Speed &amp; Score Timeline</p>', unsafe_allow_html=True)
     st.plotly_chart(plot_timeline(df), use_container_width=True)
 
-# ── Engine Performance ─────────────────────────────────────────────────────────
 st.markdown('<p class="section-hdr">Engine Performance</p>', unsafe_allow_html=True)
 
 e1, e2 = st.columns(2)
@@ -409,7 +397,6 @@ with e2:
     st.markdown("**Throttle Usage (%)**")
     st.plotly_chart(area_chart(df, 'throttle', '#FF8C00', 'rgba(255,140,0,0.1)', 'Throttle %'), use_container_width=True)
 
-# ── Raw Data ───────────────────────────────────────────────────────────────────
 with st.expander("View Raw Trip Data"):
     st.dataframe(
         df.style.background_gradient(subset=['score'], cmap='RdYlGn', vmin=0, vmax=100),
