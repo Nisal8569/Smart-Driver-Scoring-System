@@ -51,6 +51,10 @@ class MLDriverScorer:
         if speed == 0:
             return self.score, "IDLE"
 
+        # Skip prediction on OBD dropout (moving but no engine data)
+        if speed > 5 and rpm == 0 and engine_load == 0:
+            return self.score, "SAFE"
+
         prediction_label = "WAITING"
         features_df = self.feature_extractor.get_features()
 
@@ -60,7 +64,7 @@ class MLDriverScorer:
 
                 if pred == 1 or event in ("Harsh Acceleration", "Harsh Braking"):
                     prediction_label = "AGGRESSIVE"
-                    self.score = round(max(0, self.score - 3.0), 1)
+                    self.score = round(max(0, self.score - 1.5), 1)
                 else:
                     prediction_label = "SAFE"
                     self.score = round(min(100, self.score + 0.1), 1)
