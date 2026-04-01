@@ -1,0 +1,17 @@
+[Unit]
+Description=Smart Trip Data Sync Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=admin
+WorkingDirectory=/home/admin/Smart-Driver-Scoring-System
+ExecStart=/home/admin/Smart-Driver-Scoring-System/venv/bin/python3 /home/admin/Smart-Driver-Scoring-System/scripts/sync_trips.py
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/admin/Smart-Driver-Scoring-System/logs/sync_trips.log
+StandardError=append:/home/admin/Smart-Driver-Scoring-System/logs/sync_trips.log
+
+[Install]
+WantedBy=multi-user.target

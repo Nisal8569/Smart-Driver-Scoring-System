@@ -7,10 +7,10 @@ from datetime import datetime
 
 # Configuration
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../'))
-TRIPS_DIR = os.path.join(PROJECT_ROOT, 'data/trips')
-SYNC_INTERVAL = 60  # Check every 60 seconds
+TRIPS_DIR = 'data/trips'
+SYNC_INTERVAL = 300  # Check every 5 minutes (increased from 60s to be less aggressive)
 REMOTE_NAME = "origin"
-BRANCH_NAME = "main" # Change if your branch is different (e.g., 'master')
+BRANCH_NAME = "main"
 
 # Logging setup
 log_dir = os.path.join(PROJECT_ROOT, 'logs')
@@ -28,18 +28,19 @@ logger = logging.getLogger(__name__)
 def is_connected():
     """Check if there is an active internet connection."""
     try:
-        # Connect to a reliable host (GitHub) to check connectivity
-        socket.create_connection(("github.com", 80), timeout=5)
+        # Use a list of reliable hosts to check connectivity
+        # github.com is the most relevant here
+        socket.create_connection(("github.com", 443), timeout=5)
         return True
     except OSError:
         return False
 
-def run_git_command(args):
+def run_git_command(args, cwd=PROJECT_ROOT):
     """Run a git command and return output/error."""
     try:
         result = subprocess.run(
             ["git"] + args,
-            cwd=PROJECT_ROOT,
+            cwd=cwd,
             capture_output=True,
             text=True,
             check=True
@@ -50,47 +51,76 @@ def run_git_command(args):
         logger.error(f"Error: {e.stderr.strip()}")
         return None
 
+def check_git_config():
+    """Ensure git user name and email are configured."""
+    name = run_git_command(["config", "user.name"])
+    email = run_git_command(["config", "user.email"])
+    
+    if not name:
+        logger.warning("Git 'user.name' not configured. Setting temporary name.")
+        run_git_command(["config", "user.name", "Smart Driver Pi"])
+    if not email:
+        logger.warning("Git 'user.email' not configured. Setting temporary email.")
+        run_git_command(["config", "user.email", "pi@smartdriver.local"])
+
 def sync_data():
     """Sync trip data to GitHub."""
-    logger.info("Checking for new trip data to sync...")
-    
-    # 1. Check if there are changes in the trips directory
+    # 1. Pull latest changes to avoid conflicts
+    logger.info("Syncing with remote branch...")
+    pull_result = run_git_command(["pull", "--rebase", REMOTE_NAME, BRANCH_NAME])
+    if pull_result is None:
+        logger.warning("Failed to pull from remote. Proceeding with caution.")
+
+    # 2. Check for new files in trips directory
+    # Only track .csv files in data/trips
     status = run_git_command(["status", "--short", TRIPS_DIR])
     if not status:
         logger.info("No new trip data detected.")
         return
 
-    logger.info("New data detected. Starting sync process...")
+    # Check if there are actual new/modified CSV files
+    lines = status.split('\n')
+    csv_changes = [f for f in lines if f.strip().endswith('.csv')]
+    
+    if not csv_changes:
+        logger.info("No new CSV data detected in status.")
+        return
 
-    # 2. Add files
+    logger.info(f"Detected {len(csv_changes)} changes. Starting sync process...")
+
+    # 3. Add files
     run_git_command(["add", TRIPS_DIR])
     
-    # 3. Commit
+    # 4. Commit
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     commit_msg = f"Auto-sync trip data: {timestamp}"
     run_git_command(["commit", "-m", commit_msg])
     
-    # 4. Push
+    # 5. Push
     logger.info("Pushing to remote repository...")
     push_result = run_git_command(["push", REMOTE_NAME, BRANCH_NAME])
     
     if push_result is not None:
         logger.info("Sync successful!")
     else:
-        logger.error("Sync failed during push. Check your Git credentials.")
+        logger.error("Sync failed during push. Check your Git credentials (PAT or SSH).")
 
 def main():
-    logger.info("Starting Auto-Sync service...")
-    logger.info(f"Monitoring: {TRIPS_DIR}")
+    logger.info("Starting Smart Sync service...")
+    logger.info(f"Target directory: {os.path.join(PROJECT_ROOT, TRIPS_DIR)}")
+    
+    # Run config check once at start
+    check_git_config()
     
     while True:
         if is_connected():
             try:
                 sync_data()
             except Exception as e:
-                logger.error(f"Unexpected error during sync: {e}")
+                logger.exception(f"Unexpected error during sync cycle: {e}")
         else:
-            logger.warning("No internet connection. Waiting for connectivity...")
+            # Only log connectivity issues occasionally to avoid log bloat
+            pass
         
         time.sleep(SYNC_INTERVAL)
 
