@@ -63,8 +63,9 @@ class MLDriverScorer:
                 pred = self.model.predict(features_df.values)[0]
 
                 if pred == 1 or event in ("Harsh Acceleration", "Harsh Braking"):
-                    # low-speed + moderate throttle is hill/traffic, not aggression
-                    if speed < 30 and relative_throttle < 20 and throttle < 40:
+                    # suppress false positives for acceleration at low speed only
+                    # never suppress confirmed braking events
+                    if event != "Harsh Braking" and speed < 30 and relative_throttle < 20 and throttle < 40:
                         prediction_label = "SAFE"
                         self.score = round(min(100, self.score + 0.1), 1)
                     else:

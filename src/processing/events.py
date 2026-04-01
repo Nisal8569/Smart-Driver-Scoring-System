@@ -23,11 +23,13 @@ class EventDetector:
                 elif acceleration < self.brake_threshold:
                     event = "Harsh Braking"
 
-        # Catch sustained acceleration that stays below per-step threshold
+        # Catch sustained acceleration/braking that stays below per-step threshold
         if event is None and len(self.speed_history) >= self.rolling_window:
             speed_gain = current_speed - self.speed_history[-self.rolling_window]
             if speed_gain > self.rolling_accel_threshold:
                 event = "Harsh Acceleration"
+            elif speed_gain < -self.rolling_accel_threshold:
+                event = "Harsh Braking"
 
         # Catch hard acceleration via engine load + throttle
         if event is None and engine_load >= 95.0 and throttle >= 30.0 and current_speed > 5:
