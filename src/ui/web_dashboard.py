@@ -283,30 +283,27 @@ with st.sidebar:
         selected_info = None
     else:
         st.markdown(f'<div class="total-badge">{len(trips_data)} Trip{"s" if len(trips_data) != 1 else ""} on Record</div>', unsafe_allow_html=True)
-        
-        # Render trip list: active as styled HTML, inactive as clickable st.button
+
+        # Inject CSS to highlight the active button (nth-of-type = 1-indexed position)
+        active_n = st.session_state.active_trip_idx + 1
+        st.markdown(f"""
+        <style>
+        section[data-testid="stSidebar"] div[data-testid="stButton"]:nth-of-type({active_n}) > button {{
+            background: rgba(0,255,171,0.08) !important;
+            border: 1px solid rgba(0,255,171,0.35) !important;
+            border-left: 4px solid #00FFAB !important;
+            color: #00FFAB !important;
+            font-weight: 600 !important;
+        }}
+        </style>
+        """, unsafe_allow_html=True)
+
+        # Render all trips as buttons for consistent spacing
         for i, t in enumerate(trips_data):
-            is_active = (i == st.session_state.active_trip_idx)
-            if is_active:
-                st.markdown(f"""
-                <div style="
-                    background: rgba(0,255,171,0.08);
-                    border: 1px solid rgba(0,255,171,0.35);
-                    border-left: 4px solid #00FFAB;
-                    border-radius: 10px;
-                    padding: 12px 14px;
-                    margin-bottom: 4px;
-                    color: #00FFAB;
-                    font-weight: 600;
-                    font-family: Inter, sans-serif;
-                    font-size: 0.9rem;
-                ">{t['display']}</div>
-                """, unsafe_allow_html=True)
-            else:
-                if st.button(t['display'], key=f"trip_btn_{i}", use_container_width=True):
-                    st.session_state.active_trip_idx = i
-                    st.rerun()
-        
+            if st.button(t['display'], key=f"trip_btn_{i}", use_container_width=True):
+                st.session_state.active_trip_idx = i
+                st.rerun()
+
         selected_info = trips_data[st.session_state.active_trip_idx]
 
     st.markdown("---")
