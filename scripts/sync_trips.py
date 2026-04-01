@@ -8,7 +8,7 @@ from datetime import datetime
 # Configuration
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../'))
 TRIPS_DIR = 'data/trips'
-SYNC_INTERVAL = 300  # Check every 5 minutes (increased from 60s to be less aggressive)
+SYNC_INTERVAL = 300  # Check every 5 minutes
 REMOTE_NAME = "origin"
 BRANCH_NAME = "main"
 
@@ -28,8 +28,6 @@ logger = logging.getLogger(__name__)
 def is_connected():
     """Check if there is an active internet connection."""
     try:
-        # Use a list of reliable hosts to check connectivity
-        # github.com is the most relevant here
         socket.create_connection(("github.com", 443), timeout=5)
         return True
     except OSError:
@@ -55,7 +53,7 @@ def check_git_config():
     """Ensure git user name and email are configured."""
     name = run_git_command(["config", "user.name"])
     email = run_git_command(["config", "user.email"])
-    
+
     if not name:
         logger.warning("Git 'user.name' not configured. Setting temporary name.")
         run_git_command(["config", "user.name", "Smart Driver Pi"])
@@ -63,65 +61,86 @@ def check_git_config():
         logger.warning("Git 'user.email' not configured. Setting temporary email.")
         run_git_command(["config", "user.email", "pi@smartdriver.local"])
 
+def get_already_synced_files():
+    """Return set of CSV filenames already tracked by git in the trips directory."""
+    output = run_git_command(["ls-files", TRIPS_DIR])
+    if not output:
+        return set()
+    tracked = set()
+    for line in output.splitlines():
+        if line.strip().endswith('.csv'):
+            tracked.add(os.path.basename(line.strip()))
+    return tracked
+
+def get_local_trip_files():
+    """Return set of CSV filenames present locally in the trips directory."""
+    trips_path = os.path.join(PROJECT_ROOT, TRIPS_DIR)
+    if not os.path.isdir(trips_path):
+        return set()
+    return {f for f in os.listdir(trips_path) if f.endswith('.csv')}
+
 def sync_data():
-    """Sync trip data to GitHub."""
-    # 1. Pull latest changes to avoid conflicts
-    logger.info("Syncing with remote branch...")
-    pull_result = run_git_command(["pull", "--rebase", REMOTE_NAME, BRANCH_NAME])
-    if pull_result is None:
-        logger.warning("Failed to pull from remote. Proceeding with caution.")
-
-    # 2. Check for new files in trips directory
-    # Only track .csv files in data/trips
-    status = run_git_command(["status", "--short", TRIPS_DIR])
-    if not status:
-        logger.info("No new trip data detected.")
+    """Sync new trip data to GitHub, skipping files already synced."""
+    # 1. Fetch latest from remote then hard-reset to match it.
+    #    This avoids untracked-file conflicts that block git pull --rebase,
+    #    while still picking up any remote changes (e.g. files committed from PC).
+    logger.info("Fetching latest changes from remote...")
+    fetch_result = run_git_command(["fetch", REMOTE_NAME, BRANCH_NAME])
+    if fetch_result is None:
+        logger.error("Fetch failed. Skipping sync this cycle.")
         return
 
-    # Check if there are actual new/modified CSV files
-    lines = status.split('\n')
-    csv_changes = [f for f in lines if f.strip().endswith('.csv')]
-    
-    if not csv_changes:
-        logger.info("No new CSV data detected in status.")
+    reset_result = run_git_command(["reset", "--hard", f"{REMOTE_NAME}/{BRANCH_NAME}"])
+    if reset_result is None:
+        logger.error("Reset failed. Skipping sync this cycle.")
         return
 
-    logger.info(f"Detected {len(csv_changes)} changes. Starting sync process...")
+    # 2. Compare local files against already-tracked (synced) files
+    already_synced = get_already_synced_files()
+    local_files = get_local_trip_files()
+    new_files = local_files - already_synced
 
-    # 3. Add files
-    run_git_command(["add", TRIPS_DIR])
-    
+    if not new_files:
+        logger.info(f"No new trips to sync. ({len(already_synced)} already synced)")
+        return
+
+    logger.info(f"Found {len(new_files)} new trip(s) to sync (skipping {len(already_synced)} already synced):")
+    for f in sorted(new_files):
+        logger.info(f"  + {f}")
+
+    # 3. Stage only the new files
+    for f in sorted(new_files):
+        rel_path = os.path.join(TRIPS_DIR, f)
+        run_git_command(["add", rel_path])
+
     # 4. Commit
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    commit_msg = f"Auto-sync trip data: {timestamp}"
-    run_git_command(["commit", "-m", commit_msg])
-    
+    commit_msg = f"Auto-sync trip data: {timestamp} ({len(new_files)} trip(s))"
+    commit_result = run_git_command(["commit", "-m", commit_msg])
+    if commit_result is None:
+        logger.error("Commit failed. Aborting sync.")
+        return
+
     # 5. Push
     logger.info("Pushing to remote repository...")
     push_result = run_git_command(["push", REMOTE_NAME, BRANCH_NAME])
-    
     if push_result is not None:
-        logger.info("Sync successful!")
+        logger.info(f"Sync successful! {len(new_files)} trip(s) pushed.")
     else:
-        logger.error("Sync failed during push. Check your Git credentials (PAT or SSH).")
+        logger.error("Push failed. Check Git credentials (PAT or SSH key).")
 
 def main():
     logger.info("Starting Smart Sync service...")
     logger.info(f"Target directory: {os.path.join(PROJECT_ROOT, TRIPS_DIR)}")
-    
-    # Run config check once at start
+
     check_git_config()
-    
+
     while True:
         if is_connected():
             try:
                 sync_data()
             except Exception as e:
                 logger.exception(f"Unexpected error during sync cycle: {e}")
-        else:
-            # Only log connectivity issues occasionally to avoid log bloat
-            pass
-        
         time.sleep(SYNC_INTERVAL)
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -363,8 +363,6 @@ for col, val, cls, lbl in cards:
             <div class="metric-label">{lbl}</div>
         </div>""", unsafe_allow_html=True)
 
-st.markdown("<br>", unsafe_allow_html=True)
-
 # ── Gauge (left) + Timeline (right) ───────────────────────────────────────────
 g_col, t_col = st.columns([1, 2.4])
 
@@ -384,8 +382,6 @@ with g_col:
 with t_col:
     st.markdown('<p class="section-hdr">Speed &amp; Score Timeline</p>', unsafe_allow_html=True)
     st.plotly_chart(plot_timeline(df), use_container_width=True)
-
-st.markdown("<br>", unsafe_allow_html=True)
 
 # ── Engine Performance ─────────────────────────────────────────────────────────
 st.markdown('<p class="section-hdr">Engine Performance</p>', unsafe_allow_html=True)
@@ -413,8 +409,6 @@ with e1:
 with e2:
     st.markdown("**Throttle Usage (%)**")
     st.plotly_chart(area_chart(df, 'throttle', '#FF8C00', 'rgba(255,140,0,0.1)', 'Throttle %'), use_container_width=True)
-
-st.markdown("<br>", unsafe_allow_html=True)
 
 # ── Raw Data ───────────────────────────────────────────────────────────────────
 with st.expander("View Raw Trip Data"):

@@ -14,7 +14,7 @@ SYSTEMD_PATH="/etc/systemd/system/smart-sync.service"
 
 # Check if we are in the right directory
 if [ ! -f "$SERVICE_FILE" ]; then
-    echo "Error: scripts/driver-sync.service not found. Please run this from the project root."
+    echo "Error: scripts/sync.service not found. Please run this from the project root."
     exit 1
 fi
 
