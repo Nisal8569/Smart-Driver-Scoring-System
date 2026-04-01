@@ -63,8 +63,14 @@ class MLDriverScorer:
                 pred = self.model.predict(features_df.values)[0]
 
                 if pred == 1 or event in ("Harsh Acceleration", "Harsh Braking"):
-                    prediction_label = "AGGRESSIVE"
-                    self.score = round(max(0, self.score - 1.5), 1)
+                    # Suppress false positives: low speed + moderate throttle input
+                    # is likely a hill or traffic, not aggressive driving
+                    if speed < 30 and relative_throttle < 20 and throttle < 40:
+                        prediction_label = "SAFE"
+                        self.score = round(min(100, self.score + 0.1), 1)
+                    else:
+                        prediction_label = "AGGRESSIVE"
+                        self.score = round(max(0, self.score - 1.5), 1)
                 else:
                     prediction_label = "SAFE"
                     self.score = round(min(100, self.score + 0.1), 1)
