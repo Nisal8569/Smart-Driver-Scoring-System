@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Driver Scoring System
+Comment=Launch the Smart Driver Scoring Dashboard
+Icon=dashboard
+Exec=/home/admin/Smart-Driver-Scoring-System/scripts/launch_dashboard.sh
+Terminal=true
+Categories=Application;

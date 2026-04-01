@@ -1,0 +1,84 @@
+🚗 Smart Driver Scoring System: Project Overview
+
+This document provides a comprehensive breakdown of the Smart Driver Scoring System, an IoT-based telematics solution designed to monitor, evaluate, and improve driving behavior using real-time vehicle data.
+
+---
+
+## Project Objective
+The primary goal of this project is to create an affordable, real-time driver assessment system that:
+*   Collects vehicle diagnostics via OBD-II (ELM327 BLE).
+*   Uses Machine Learning to classify driving behavior (Safe vs. Aggressive).
+*   Provides Immediate Feedback to drivers via a 3.5" LCD touchscreen.
+*   Logs trip data for Post-Trip Analysis on a web dashboard.
+
+---
+
+## System Architecture
+
+The system follows a modular architecture designed for the Raspberry Pi:
+
+1.  Data Acquisition Layer: Connects to the vehicle's ECU via a Bluetooth Low Energy (BLE) OBD-II scanner.
+2.  Feature Engineering Layer: Processes raw PIDs (Speed, RPM, Throttle) into behavioral metrics (Rolling Averages, Jerk, Idle Ratios).
+3.  Inference Layer: Runs a pre-trained HistGradientBoosting model to predict risk levels every ~0.3s.
+4.  UI/Interaction Layer: 
+    *   Real-time Output: Tkinter GUI on the RPi LCD.
+    *   Data Export: Automatic CSV logging of every trip.
+    *   Web Dashboard: Streamlit interface for historical data visualization.
+
+---
+
+## Technology Stack
+
+- Hardware: Raspberry Pi 4/5, Waveshare 3.5" LCD, ELM327 BLE Adapter
+- Programming: Python 3.x
+- Data Science: Scikit-Learn, XGBoost, Pandas, NumPy
+- Communication: Bluetooth BLE (using bleak or similar wrappers)
+- User Interface: Tkinter (Local), Streamlit (Web)
+- Infrastructure: Bash Scripts (Automation), GitHub (Version Control)
+
+---
+
+## Core Folder Structure
+
+Smart-Driver-Scoring-System
+├── src
+│   ├── acquisition  # BLE & Simulator logic (ble_device.py, sim.py)
+│   ├── processing   # Feature extraction & Event detection (features.py)
+│   ├── models       # Scorer wrappers & .pkl files (scorer.py)
+│   ├── ui           # Tkinter & Streamlit dashboards (dashboard.py, web_dashboard.py)
+│   └── utils        # Data recording (recorder.py)
+├── data
+│   ├── trips        # STORE ALL REAL TRIP LOGS IN CSV
+│   └── cleaned      # Processed data for ML training
+├── scripts          # setup_pi.sh, sync_trips.py
+└── tools            # ble_inspector.py, test_obd_ble.py
+
+---
+
+## Machine Learning Model: "The Balanced Model"
+The system currently uses a HistGradientBoostingClassifier (a high-performance alternative to XGBoost) optimized for:
+*   Accuracy: ~96% classification accuracy on training sets.
+*   Realism: Designed to ignore minor sensor noise while flagging sustained aggressive acceleration and high engine load (target: >35% throttle or >90% load).
+*   Latency: Predictions are delivered in under 0.3 seconds, meeting real-time requirements.
+
+---
+
+## Key Features
+*   Real-time Scoring: Dynamic 0-100 score based on driving aggression.
+*   Event Detection: Flags specific events like "Hard Braking" or "High RPM Shifts".
+*   Trip Logging: Every journey is saved as a detailed CSV for review.
+*   Offline Support: Can run fully offline on the Pi, with cloud sync options.
+*   Simulation Mode: Includes a data simulator (src/acquisition/sim.py) for testing without a vehicle.
+
+---
+
+## How to Execute
+1.  Initialization: 
+    *   On the Pi: Run python main_ble.py (Headless) or python main_lcd.py (with LCD UI).
+2.  Post-Trip Analysis:
+    *   Run streamlit run src/ui/web_dashboard.py to view trip metrics on any browser.
+3.  Hardware Setup:
+    *   Drivers for the 3.5" LCD are pre-configured in the LCD-show/ directory.
+
+---
+NOTE: This project was developed by Mr. Nisal Shanthadewa for his BEng in Software Engineering at the Informatics Institute of Technology (IIT).

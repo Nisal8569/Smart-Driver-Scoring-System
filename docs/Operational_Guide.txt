@@ -1,0 +1,70 @@
+Smart Driver Scoring System: Operational Guide
+
+This document explains how to utilize the various software components, scripts, and tools developed for this project.
+
+---
+
+## 1. Core Application Execution
+
+The system is designed to run on a Raspberry Pi, but several components can be executed on a standard PC for development and testing.
+
+### Running on Raspberry Pi
+- With 3.5" LCD UI: 
+  python3 main_lcd.py
+  (Launches the Tkinter dashboard in full-screen mode.)
+- Headless Mode (Background):
+  python3 main_ble.py
+  (Starts data acquisition and ML scoring without a GUI.)
+
+### Running on a PC (Simulation)
+- In src/ui/dashboard.py, set USE_MOCK = True to use the MockOBDAdapter.
+  python src/ui/dashboard.py
+  (Simulates a driving session using data from data/mock_drive_data.csv.)
+
+---
+
+## 2. Developer & Setup Utilities
+
+### Bluetooth Connectivity
+- scripts/scan_ble.py: Scans for nearby BLE devices to find your OBD-II adapter's MAC address.
+- tools/ble_inspector.py: A low-level tool to list GATT services and characteristics of a BLE device (useful for debugging adapter compatibility).
+
+### System Automation
+- scripts/setup_pi.sh: A shell script that installs all necessary Python packages and system dependencies on a fresh Raspberry Pi.
+- scripts/sync_trips.py: Automatically syncs locally saved trip CSVs from the Pi to your central data repository (e.g., GitHub or a cloud server).
+
+---
+
+## 3. Machine Learning Workflow
+
+### Training and Retraining
+- Train_Model_Balanced.py: This is the primary script for training the driver_model_balanced.pkl.
+  * How to Use: Ensure your data is in data/cleaned/all_drivers_combined.csv and run the script. It will generate a new .pkl model and an evaluation report.
+- tools/preprocess_datasets.py: Use this script to clean and normalize raw OBD-II CSV logs into the format required for ML training.
+
+### Model Verification
+- test_model_debug.py: A specialized script that feeds edge-case values (e.g., 0% throttle vs 90% load) into the model to verify if the prediction logic matches expectations.
+
+---
+
+## 4. Dashboards & Visualization
+
+### Real-Time Dashboard (In-Car)
+- File: src/ui/dashboard.py
+- Output: Real-time speed, RPM, throttle, and safety score.
+- Visuals: Color-coded alerts (Green: Safe, Red: Aggressive).
+
+### Post-Trip Web Dashboard (Analysis)
+- File: src/ui/web_dashboard.py
+- Execution: streamlit run src/ui/web_dashboard.py
+- Usage: Allows users to select a specific trip (trip_YYYYMMDD_HHMMSS.csv) and view interactive charts of speed and RPM, aggression heatmaps, and a detailed breakdown of "Harsh Events" detected during the journey.
+
+---
+
+## 5. Debugging Tools
+
+- tools/test_obd_ble.py: Sends specific OBD-II commands (like 01 0D for speed) directly to the adapter and displays the raw response. Essential for diagnosing communication errors.
+- logs/dashboard_*.log: Check these files for detailed error reports and internal system state during operation.
+
+---
+TIP: Use the DriverScoring.desktop shortcut on the Raspberry Pi desktop for a one-click launch of the entire system.
